@@ -15,7 +15,7 @@ namespace Test_Backend.Services.Implementations
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<OrderDTO> CreateOrderAsync(OrderDTO orderDto)
+        public async Task<CreateOrderDTO> CreateOrderAsync(CreateOrderDTO createorderDto)
         {
             var orderCode = await _unitOfWork.Orders.GenerateOrderCodeAsync();
 
@@ -23,7 +23,7 @@ namespace Test_Backend.Services.Implementations
             decimal totalTax = 0;
             var orderItems = new List<OrderItem>();
 
-            foreach (var item in orderDto.OrderItems)
+            foreach (var item in createorderDto.OrderItems)
             {
                 var product = await _unitOfWork.Products.GetByIdAsync(item.ProductCode);
                 if (product == null)
@@ -56,8 +56,8 @@ namespace Test_Backend.Services.Implementations
             var order = new Order
             {
                 OrderCode = orderCode,
-                CustomerName = orderDto.CustomerName,
-                CustomerPhone = orderDto.CustomerPhone,
+                CustomerName = createorderDto.CustomerName,
+                CustomerPhone = createorderDto.CustomerPhone,
                 TotalAmount = totalAmount,
                 TotalTax = totalTax,
                 CreatedAt = DateTime.UtcNow,
@@ -66,8 +66,7 @@ namespace Test_Backend.Services.Implementations
 
             await _unitOfWork.Orders.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
-            orderDto.OrderCode = orderCode;
-            return orderDto;
+            return createorderDto;
         }
 
         public async Task<OrderDTO> UpdateOrderAsync(string orderCode, OrderDTO orderDto)

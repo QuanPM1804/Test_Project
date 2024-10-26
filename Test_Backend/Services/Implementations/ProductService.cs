@@ -14,12 +14,12 @@ namespace Test_Backend.Services.Implementations
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<ProductDTO> CreateProductAsync(ProductDTO productDto)
+        public async Task<CreateProductDTO> CreateProductAsync(CreateProductDTO createproductDto)
         {
-            if (productDto.ImportPrice < 0 || productDto.SellingPrice < 0)
+            if (createproductDto.ImportPrice < 0 || createproductDto.SellingPrice < 0)
                 throw new ArgumentException("Prices cannot be negative");
 
-            if (productDto.TaxRate != 8 && productDto.TaxRate != 10)
+            if (createproductDto.TaxRate != 8 && createproductDto.TaxRate != 10)
                 throw new ArgumentException("Tax rate must be either 8% or 10%");
 
             var productCode = await _unitOfWork.Products.GenerateProductCodeAsync();
@@ -27,20 +27,19 @@ namespace Test_Backend.Services.Implementations
             var product = new Product
             {
                 ProductCode = productCode,
-                Name = productDto.Name,
-                Unit = productDto.Unit,
-                ImportPrice = productDto.ImportPrice,
-                SellingPrice = productDto.SellingPrice,
-                IsActive = productDto.IsActive,
-                TaxRate = productDto.TaxRate,
+                Name = createproductDto.Name,
+                Unit = createproductDto.Unit,
+                ImportPrice = createproductDto.ImportPrice,
+                SellingPrice = createproductDto.SellingPrice,
+                IsActive = createproductDto.IsActive,
+                TaxRate = createproductDto.TaxRate,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             await _unitOfWork.Products.AddAsync(product);
             await _unitOfWork.SaveChangesAsync();
-            productDto.ProductCode = productCode;
-            return productDto;
+            return createproductDto;
 
         }
 

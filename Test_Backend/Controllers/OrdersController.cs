@@ -16,12 +16,12 @@ namespace Test_Backend.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<OrderDTO>> CreateOrder([FromBody] OrderDTO orderDto)
+        public async Task<ActionResult<CreateOrderDTO>> CreateOrder([FromBody] CreateOrderDTO createorderDto)
         {
             try
             {
-                var result = await _orderService.CreateOrderAsync(orderDto);
-                return CreatedAtAction(nameof(GetOrder), new { orderCode = result.OrderCode }, result);
+                var result = await _orderService.CreateOrderAsync(createorderDto);
+                return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {

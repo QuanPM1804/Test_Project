@@ -4,7 +4,7 @@ namespace Test_Backend.Services.Interfaces
 {
     public interface IProductService
     {
-        Task<ProductDTO> CreateProductAsync(ProductDTO productDto);
+        Task<CreateProductDTO> CreateProductAsync(CreateProductDTO createproductDto);
         Task<ProductDTO> UpdateProductAsync(string productCode, ProductDTO productDto);
         Task DeleteProductAsync(string productCode);
         Task DeleteProductsAsync(List<string> productCodes);

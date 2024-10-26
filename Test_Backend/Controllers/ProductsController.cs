@@ -16,12 +16,12 @@ namespace Test_Backend.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ProductDTO>> CreateProduct([FromBody] ProductDTO productDto)
+        public async Task<ActionResult<CreateProductDTO>> CreateProduct([FromBody] CreateProductDTO createproductDto)
         {
             try
             {
-                var result = await _productService.CreateProductAsync(productDto);
-                return CreatedAtAction(nameof(GetProducts), new { productCode = result.ProductCode }, result);
+                var result = await _productService.CreateProductAsync(createproductDto);
+                return Ok(result);
             }
             catch (ArgumentException ex)
             {
