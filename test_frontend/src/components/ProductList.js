@@ -17,18 +17,25 @@ import {
     Tooltip,
     Alert,
     Snackbar,
-    Box
+    Box,
+    Badge,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
 } from '@mui/material';
 import {
     Delete as DeleteIcon,
     Edit as EditIcon,
     Add as AddIcon,
-    Refresh as RefreshIcon
+    Refresh as RefreshIcon,
+    ShoppingCart as ShoppingCartIcon,
+    AddShoppingCart as AddShoppingCartIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import api from '../api';
 
-// Styled components
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
     marginTop: theme.spacing(3),
     borderRadius: theme.spacing(1),
@@ -70,7 +77,66 @@ const ProductList = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+    const [cart, setCart] = useState([]);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [customerInfo, setCustomerInfo] = useState({
+        name: '',
+        phone: '',
+    });
+    const [checkoutLoading, setCheckoutLoading] = useState(false);
 
+
+    const handleCustomerInfoChange = (event) => {
+        const { name, value } = event.target;
+        setCustomerInfo(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+    
+    const handleCheckout = async () => {
+        if (!customerInfo.name || !customerInfo.phone) {
+            setSnackbar({
+                open: true,
+                message: 'Please fill in all customer information',
+                severity: 'error'
+            });
+            return;
+        }
+
+        setCheckoutLoading(true);
+        try {
+            const orderData = {
+                customerName: customerInfo.name,
+                customerPhone: customerInfo.phone,
+                orderItems: cart.map(item => ({
+                    productCode: item.productCode,
+                    quantity: item.quantity,
+                    sellingPrice: item.sellingPrice
+                }))
+            };
+
+            const response = await api.post('/orders', orderData);
+            
+            setSnackbar({
+                open: true,
+                message: 'Order created successfully!',
+                severity: 'success'
+            });
+            
+            setCart([]);
+            setIsCartOpen(false);
+            setCustomerInfo({ name: '', phone: '' });
+        } catch (error) {
+            setSnackbar({
+                open: true,
+                message: error.response?.data || 'Failed to create order',
+                severity: 'error'
+            });
+        } finally {
+            setCheckoutLoading(false);
+        }
+    };
     const fetchProducts = async () => {
         setLoading(true);
         try {
@@ -132,6 +198,40 @@ const ProductList = () => {
         }
     };
 
+    const addToCart = (product) => {
+        setCart(prevCart => {
+            const existingItem = prevCart.find(item => item.productCode === product.productCode);
+            if (existingItem) {
+                return prevCart.map(item =>
+                    item.productCode === product.productCode
+                        ? { ...item, quantity: item.quantity + 1 }
+                        : item
+                );
+            }
+            return [...prevCart, { ...product, quantity: 1 }];
+        });
+        setSnackbar({
+            open: true,
+            message: 'Product added to cart',
+            severity: 'success'
+        });
+    };
+
+    const removeFromCart = (productCode) => {
+        setCart(prevCart => prevCart.filter(item => item.productCode !== productCode));
+    };
+
+    const updateCartItemQuantity = (productCode, newQuantity) => {
+        if (newQuantity < 1) return;
+        setCart(prevCart =>
+            prevCart.map(item =>
+                item.productCode === productCode
+                    ? { ...item, quantity: newQuantity }
+                    : item
+            )
+        );
+    };
+
     return (
         <Container maxWidth="lg">
             <Box sx={{ width: '100%', mb: 4 }}>
@@ -153,6 +253,13 @@ const ProductList = () => {
                     </Box>
 
                     <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Open Cart">
+                            <IconButton onClick={() => setIsCartOpen(true)}>
+                                <Badge badgeContent={cart.reduce((sum, item) => sum + item.quantity, 0)} color="primary">
+                                    <ShoppingCartIcon />
+                                </Badge>
+                            </IconButton>
+                        </Tooltip>
                         <Tooltip title="Refresh list">
                             <IconButton onClick={fetchProducts}>
                                 <RefreshIcon />
@@ -171,11 +278,7 @@ const ProductList = () => {
                     </Box>
                 </Toolbar>
 
-                {error && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                        {error}
-                    </Alert>
-                )}
+                {/* ... keep existing error alert ... */}
 
                 <StyledTableContainer component={Paper}>
                     <Table>
@@ -216,6 +319,14 @@ const ProductList = () => {
                                             ${product.sellingPrice.toLocaleString()}
                                         </TableCell>
                                         <TableCell align="center">
+                                            <Tooltip title="Add to cart">
+                                                <IconButton
+                                                    onClick={() => addToCart(product)}
+                                                    color="primary"
+                                                >
+                                                    <AddShoppingCartIcon />
+                                                </IconButton>
+                                            </Tooltip>
                                             <Tooltip title="Edit product">
                                                 <IconButton
                                                     component={Link}
@@ -249,6 +360,122 @@ const ProductList = () => {
                     </Table>
                 </StyledTableContainer>
 
+                {/* Cart Dialog */}
+                <Dialog
+        open={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        maxWidth="md"
+        fullWidth
+    >
+        <DialogTitle>Shopping Cart</DialogTitle>
+        <DialogContent>
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Product</TableCell>
+                        <TableCell align="right">Price</TableCell>
+                        <TableCell align="right">Quantity</TableCell>
+                        <TableCell align="right">Total</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {cart.map((item) => (
+                        <TableRow key={item.productCode}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell align="right">
+                                ${item.sellingPrice.toLocaleString()}
+                            </TableCell>
+                            <TableCell align="right">
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => updateCartItemQuantity(item.productCode, item.quantity - 1)}
+                                    >
+                                        -
+                                    </IconButton>
+                                    <Typography sx={{ mx: 1 }}>{item.quantity}</Typography>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => updateCartItemQuantity(item.productCode, item.quantity + 1)}
+                                    >
+                                        +
+                                    </IconButton>
+                                </Box>
+                            </TableCell>
+                            <TableCell align="right">
+                                ${(item.sellingPrice * item.quantity).toLocaleString()}
+                            </TableCell>
+                            <TableCell align="center">
+                                <IconButton
+                                    onClick={() => removeFromCart(item.productCode)}
+                                    color="error"
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    {cart.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={5} align="center">
+                                <Typography variant="subtitle1" sx={{ py: 2 }}>
+                                    Your cart is empty
+                                </Typography>
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+            {cart.length > 0 && (
+                <>
+                    <Box sx={{ mt: 4, mb: 2 }}>
+                        <Typography variant="h6" gutterBottom>
+                            Customer Information
+                        </Typography>
+                        <TextField
+                            name="name"
+                            label="Customer Name"
+                            value={customerInfo.name}
+                            onChange={handleCustomerInfoChange}
+                            fullWidth
+                            margin="normal"
+                            required
+                        />
+                        <TextField
+                            name="phone"
+                            label="Phone Number"
+                            value={customerInfo.phone}
+                            onChange={handleCustomerInfoChange}
+                            fullWidth
+                            margin="normal"
+                            required
+                        />
+                    </Box>
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                        <Typography variant="h6">
+                            Total: ${cart.reduce((sum, item) => sum + (item.sellingPrice * item.quantity), 0).toLocaleString()}
+                        </Typography>
+                    </Box>
+                </>
+            )}
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setIsCartOpen(false)}>Close</Button>
+            {cart.length > 0 && (
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleCheckout}
+                    disabled={checkoutLoading}
+                >
+                    {checkoutLoading ? 'Processing...' : 'Checkout'}
+                </Button>
+            )}
+        </DialogActions>
+    </Dialog>
+
+                {/* ... keep existing selected products actions and snackbar ... */}
                 {selectedProducts.length > 0 && (
                     <Box sx={{ mt: 2 }}>
                         <ActionButton
