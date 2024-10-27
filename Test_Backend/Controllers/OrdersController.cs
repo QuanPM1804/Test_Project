@@ -5,7 +5,7 @@ using Test_Backend.Services.Interfaces;
 namespace Test_Backend.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/orders")]
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
