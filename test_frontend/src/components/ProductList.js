@@ -24,6 +24,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  InputAdornment,
 } from "@mui/material";
 import {
   Delete as DeleteIcon,
@@ -33,6 +34,8 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AddShoppingCart as AddShoppingCartIcon,
   ViewList as ViewListIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import api from "../api";
@@ -44,6 +47,11 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   "& .MuiTable-root": {
     minWidth: 750,
   },
+}));
+
+const SearchTextField = styled(TextField)(({ theme }) => ({
+  marginRight: theme.spacing(2),
+  width: '300px',
 }));
 
 const StyledTableHead = styled(TableHead)(({ theme }) => ({
@@ -77,6 +85,8 @@ const ProductList = () => {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -154,6 +164,18 @@ const ProductList = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm) {
+        handleSearch();
+      } else {
+        fetchProducts();
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchProducts();
@@ -273,6 +295,26 @@ const ProductList = () => {
     );
   };
 
+  const handleSearch = async () => {
+    setSearching(true);
+    try {
+      const response = await api.get(`/products/search?searchTerm=${encodeURIComponent(searchTerm)}`);
+      setProducts(response.data || []);
+      setError(null);
+    } catch (error) {
+      console.error("Failed to search products", error);
+      setError("Failed to search products. Please try again.");
+      setProducts([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSearchClear = () => {
+    setSearchTerm("");
+    fetchProducts();
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ width: "100%", mb: 4 }}>
@@ -280,16 +322,44 @@ const ProductList = () => {
           Product Management
         </Typography>
 
-        <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 } }}>
-          <Box sx={{ flex: "1 1 100%" }}>
+        <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 }, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: "1 1 100%", display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 0 } }}>
             {selectedProducts.length > 0 ? (
               <Typography color="inherit" variant="subtitle1">
                 {selectedProducts.length} selected
               </Typography>
             ) : (
-              <Typography variant="h6" id="tableTitle">
-                Products List
-              </Typography>
+              <>
+                <SearchTextField
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  size="small"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchTerm && (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={handleSearchClear}
+                          edge="end"
+                        >
+                          <ClearIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                {searching && (
+                  <Typography variant="body2" color="textSecondary" sx={{ ml: 2 }}>
+                    Searching...
+                  </Typography>
+                )}
+              </>
             )}
           </Box>
 
